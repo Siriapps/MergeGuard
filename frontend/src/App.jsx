@@ -5,7 +5,7 @@ import SurvivabilityGauge from './SurvivabilityGauge'
 import DriftPanel from './DriftPanel'
 import TracePanel from './TracePanel'
 
-const API = 'http://localhost:8000'
+const API = window.location.hostname === 'localhost' ? 'http://localhost:8000' : ''
 
 const SAMPLE_DIFF = `diff --git a/api/users.py b/api/users.py
 --- a/api/users.py
