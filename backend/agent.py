@@ -23,7 +23,28 @@ For each issue found:
 - Assign confidence: 0-100% that this will actually cause a problem in production
 
 Be specific. Be harsh. Be right.
-If you find nothing wrong, say so — but you better have checked thoroughly."""
+If you find nothing wrong, say so — but you better have checked thoroughly.
+
+CRITICAL OUTPUT FORMAT REQUIREMENT:
+After your analysis, you MUST output a JSON code block with your findings. This is mandatory.
+Format your final output as:
+
+```json
+[
+  {
+    "severity": "CRITICAL",
+    "confidence": 94,
+    "line": "23",
+    "issue": "Short title of the issue",
+    "why_prod_fails": "Exactly how this kills you in production",
+    "fix": "The exact one-line fix"
+  }
+]
+```
+
+severity must be one of: CRITICAL, WARN, STYLE
+confidence must be 0-100
+If you find no issues, return an empty array: []"""
 
 ghost_agent = Agent(
     name="ghost",

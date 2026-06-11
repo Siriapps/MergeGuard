@@ -1,41 +1,59 @@
 import React from 'react'
 
-const SEVERITY_CONFIG = {
-  CRITICAL: { color: '#f85149', bg: 'rgba(248, 81, 73, 0.15)', icon: '🔴' },
-  WARN: { color: '#d29922', bg: 'rgba(210, 153, 34, 0.15)', icon: '🟡' },
-  STYLE: { color: '#58a6ff', bg: 'rgba(88, 166, 255, 0.15)', icon: '🔵' },
+const SEV = {
+  CRITICAL: { color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.2)' },
+  WARN:     { color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.2)' },
+  STYLE:    { color: '#3b82f6', bg: 'rgba(59,130,246,0.06)',  border: 'rgba(59,130,246,0.2)' },
 }
 
 export default function RejectionList({ rejections }) {
   if (!rejections || rejections.length === 0) {
     return (
-      <div style={styles.clean}>
-        <span style={{ fontSize: 32 }}>✅</span>
-        <p>Ghost found nothing. Suspicious.</p>
+      <div style={s.clean}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5">
+          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
+          <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <p style={{ color: '#10b981', fontWeight: 600 }}>All clear — no issues found</p>
+        <p style={{ color: '#5a6577', fontSize: 12 }}>Ghost found nothing. Suspicious.</p>
       </div>
     )
   }
 
   const sorted = [...rejections].sort((a, b) => {
-    const order = { CRITICAL: 0, WARN: 1, STYLE: 2 }
-    return (order[a.severity] ?? 3) - (order[b.severity] ?? 3)
+    const ord = { CRITICAL: 0, WARN: 1, STYLE: 2 }
+    return (ord[a.severity] ?? 3) - (ord[b.severity] ?? 3)
   })
 
   return (
-    <div style={styles.list}>
+    <div style={s.list}>
       {sorted.map((r, i) => {
-        const cfg = SEVERITY_CONFIG[r.severity] || SEVERITY_CONFIG.STYLE
+        const cfg = SEV[r.severity] || SEV.STYLE
         return (
-          <div key={i} style={{ ...styles.card, borderLeft: `3px solid ${cfg.color}` }}>
-            <div style={styles.cardHeader}>
-              <span style={{ ...styles.badge, backgroundColor: cfg.bg, color: cfg.color }}>
-                {cfg.icon} {r.severity}
-              </span>
-              <span style={styles.confidence}>{r.confidence}% confidence</span>
+          <div key={i} style={{ ...s.card, borderLeftColor: cfg.color, background: cfg.bg }}>
+            <div style={s.top}>
+              <div style={s.topLeft}>
+                <span style={{ ...s.badge, color: cfg.color, background: `${cfg.color}18`, border: `1px solid ${cfg.border}` }}>
+                  {r.severity}
+                </span>
+                {r.line && <span style={s.lineRef}>Line {r.line}</span>}
+              </div>
+              <span style={s.confidence}>{r.confidence}%</span>
             </div>
-            {r.line && <div style={styles.lineRef}>Line {r.line}</div>}
-            <div style={styles.reason}>{r.reason}</div>
-            <div style={styles.evidence}>{r.evidence}</div>
+
+            <div style={s.issue}>{r.issue}</div>
+
+            <div style={s.section}>
+              <div style={s.label}>WHY THIS KILLS PRODUCTION</div>
+              <div style={s.detail}>{r.why_prod_fails}</div>
+            </div>
+
+            <div style={s.fixWrap}>
+              <div style={s.fixHeader}>
+                <span style={s.fixTag}>RECOMMENDED FIX</span>
+              </div>
+              <code style={s.fixCode}>{r.fix}</code>
+            </div>
           </div>
         )
       })}
@@ -43,63 +61,39 @@ export default function RejectionList({ rejections }) {
   )
 }
 
-const styles = {
-  list: {
-    flex: 1,
-    overflow: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-  },
+const s = {
+  list: { display: 'flex', flexDirection: 'column', gap: 12 },
   card: {
-    backgroundColor: '#161b22',
-    border: '1px solid #21262d',
+    padding: 16,
+    borderLeft: '3px solid',
+    borderRadius: 10,
+    border: '1px solid var(--border)',
+    borderLeft: '3px solid',
+    animation: 'fadeIn 0.4s ease',
+  },
+  top: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  topLeft: { display: 'flex', alignItems: 'center', gap: 8 },
+  badge: { fontSize: 10, fontWeight: 800, letterSpacing: 1, padding: '2px 8px', borderRadius: 4 },
+  lineRef: { fontSize: 11, color: '#3b82f6', fontFamily: 'var(--font-mono)', fontWeight: 500 },
+  confidence: { fontSize: 13, color: '#8b95a5', fontFamily: 'var(--font-mono)', fontWeight: 600 },
+  issue: { fontSize: 14, fontWeight: 600, color: '#e8ecf1', marginBottom: 10, lineHeight: 1.4 },
+  section: { marginBottom: 10 },
+  label: { fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: '#5a6577', textTransform: 'uppercase', marginBottom: 4 },
+  detail: { fontSize: 12, color: '#8b95a5', lineHeight: 1.6 },
+  fixWrap: {
+    background: 'rgba(16,185,129,0.06)',
+    border: '1px solid rgba(16,185,129,0.12)',
     borderRadius: 8,
-    padding: 14,
+    padding: 10,
   },
-  cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  badge: {
-    padding: '3px 10px',
-    borderRadius: 12,
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: 0.5,
-  },
-  confidence: {
-    fontSize: 12,
-    color: '#8b949e',
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  lineRef: {
-    fontSize: 11,
-    color: '#79c0ff',
-    fontFamily: "'JetBrains Mono', monospace",
-    marginBottom: 6,
-  },
-  reason: {
-    fontSize: 13,
-    color: '#e6edf3',
-    lineHeight: 1.5,
-    marginBottom: 6,
-  },
-  evidence: {
-    fontSize: 11,
-    color: '#8b949e',
-    fontFamily: "'JetBrains Mono', monospace",
-    whiteSpace: 'pre-wrap',
+  fixHeader: { marginBottom: 6 },
+  fixTag: { fontSize: 9, fontWeight: 800, color: '#10b981', letterSpacing: 1 },
+  fixCode: {
+    fontSize: 11, color: '#10b981', fontFamily: 'var(--font-mono)', lineHeight: 1.6,
+    wordBreak: 'break-word', display: 'block',
   },
   clean: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    color: '#8b949e',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: 8, padding: 40, textAlign: 'center',
   },
 }

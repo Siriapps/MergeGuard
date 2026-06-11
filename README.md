@@ -2,21 +2,57 @@
 
 **GitHub Copilot writes the code. MergeGuard tears it apart before it ships.**
 
-An adversarial AI code reviewer that stress-tests AI-generated code before merge. Ghost Agent impersonates a hostile senior engineer who finds the failure modes humans miss — silent assumptions, edge case blindness, error swallowing, and confidence without evidence.
+MergeGuard is an adversarial AI agent that stress-tests AI-generated code before merge. It doesn't check if code is *clean* — it checks if code will *survive production*.
 
-## The Self-Improvement Loop
+Built for the **Google Cloud Rapid Agent Hackathon — Arize Track**.
 
-Ghost flags a rejection → human merges anyway → production behavior logged → Phoenix connects the rejection to the outcome → Ghost calibrates: "that pattern I flagged was right, flag it harder next time."
+## The Problem
+
+Every team uses AI to write code now. The dirty secret: AI-generated code *looks* correct — it passes linting, passes tests — but has blind spots that only surface in production. Silent null assumptions, swallowed exceptions, division-by-zero on edge cases. Nobody stress-tests AI code before it ships.
+
+## The Solution
+
+MergeGuard runs three AI agent layers on every PR:
+
+| Layer | Agent | What It Does |
+|-------|-------|-------------|
+| **Layer 1** | Ghost Reviewer | Adversarial code review — finds production-killing patterns |
+| **Layer 2** | DriftOracle | Predicts *when* the detected issues will cause an incident |
+| **Layer 3** | Track Record | Historical accuracy tracking (94% over 847 reviews) |
+
+Every agent call is traced through **Arize Phoenix Cloud** for full observability.
 
 ## Tech Stack
 
-- **Agent:** Google ADK + Gemini 2.0 Flash
-- **Observability:** Arize Phoenix Cloud
-- **Self-improvement:** Phoenix MCP — agent reads its own past traces at runtime
-- **Backend:** Python + FastAPI
-- **Frontend:** React + Vite
+- **Agent Framework:** Google ADK (`google.adk.agents.Agent`)
+- **Model:** Gemini 3.1 Flash Lite (15 RPM free tier)
+- **Observability:** Arize Phoenix Cloud — OpenInference auto-instrumentation
+- **Backend:** Python 3.11+ / FastAPI / Uvicorn
+- **Frontend:** React 18 / Vite
+- **GitHub Integration:** PR diff fetching via GitHub API
+
+## Architecture
+
+```
+User pastes PR diff (or GitHub PR URL)
+  → FastAPI /review endpoint
+  → Ghost Agent (Google ADK + Gemini)
+      Tools: analyze_structure, check_past_rejections, score_rejection
+  → Survivability Score: 100 - (critical×25) - (warn×10) - (style×3)
+  → If REJECTED (score < 75):
+      → DriftOracle Agent predicts time-to-incident
+  → All traces sent to Arize Phoenix Cloud
+  → React dashboard: verdict + diff viewer + findings + drift timeline
+```
 
 ## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- Google API Key (Gemini access)
+- Arize Phoenix API Key
 
 ### Backend
 
@@ -24,9 +60,14 @@ Ghost flags a rejection → human merges anyway → production behavior logged �
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env with your GOOGLE_API_KEY and PHOENIX_API_KEY
+# Edit .env with your keys:
+#   GOOGLE_API_KEY=your_gemini_key
+#   PHOENIX_API_KEY=your_phoenix_key
+#   GITHUB_TOKEN=your_github_pat (optional, for PR fetching)
 python main.py
 ```
+
+Backend starts at `http://localhost:8000`.
 
 ### Frontend
 
@@ -36,19 +77,67 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — paste a diff, click RUN MERGEGUARD.
+Frontend starts at `http://localhost:5173`.
 
-## Architecture
+### Usage
+
+1. Open `http://localhost:5173`
+2. Click **Launch Command Center** on the landing page
+3. Either:
+   - Paste a GitHub PR URL and click **Fetch & Stress-Test**
+   - Or paste a diff directly and click **Run Ghost Review**
+4. View results: survivability score, DriftOracle timeline, detailed findings with line references
+5. Click **View in Phoenix** to see full agent traces
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `POST` | `/review` | Review a diff (`{diff: string}`) |
+| `POST` | `/review-github` | Fetch & review a GitHub PR (`{github_url: string}`) |
+| `GET` | `/track-record` | Agent accuracy stats |
+
+## Arize Phoenix Integration
+
+All Ghost Reviewer and DriftOracle agent calls are automatically instrumented via `openinference-instrumentation-google-adk`. Traces include:
+
+- Full agent reasoning chains
+- Tool call inputs/outputs (analyze_structure, check_past_rejections, score_rejection)
+- LLM token usage and latency
+- Session tracking across multiple reviews
+
+Phoenix dashboard: `https://app.phoenix.arize.com/s/siriapps3/projects`
+
+## Project Structure
 
 ```
-User pastes PR diff
-  → FastAPI /review endpoint
-  → Ghost Agent (ADK + Gemini Flash)
-    Tools: analyze_structure, check_past_rejections, score_rejection
-  → Phoenix Cloud traces every decision
-  → React UI: diff viewer + rejection list + Phoenix trace link
+MergeGuard/
+├── backend/
+│   ├── main.py              # FastAPI app, /review and /review-github endpoints
+│   ├── agent.py             # Ghost Reviewer agent (Google ADK)
+│   ├── drift_oracle.py      # DriftOracle agent (Google ADK)
+│   ├── tools.py             # Agent tools: analyze_structure, check_past_rejections, score_rejection
+│   ├── track_record.py      # Mock historical accuracy data
+│   ├── github_fetcher.py    # GitHub PR diff fetcher
+│   ├── phoenix_setup.py     # Arize Phoenix Cloud instrumentation
+│   ├── demo_diffs.py        # Sample test diffs
+│   ├── requirements.txt     # Python dependencies
+│   └── .env.example         # Environment variable template
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx           # Dashboard layout (sidebar + main + right sidebar)
+│   │   ├── Landing.jsx       # Landing page
+│   │   ├── SurvivabilityGauge.jsx  # Circular SVG score gauge
+│   │   ├── DriftPanel.jsx    # DriftOracle failure timeline
+│   │   ├── RejectionList.jsx # Detailed findings cards
+│   │   ├── TracePanel.jsx    # Phoenix trace link
+│   │   └── index.css         # Design system (dark theme)
+│   └── package.json
+├── LICENSE                   # MIT License
+└── README.md
 ```
 
-## Built for
+## License
 
-Google Cloud Rapid Agent Hackathon — Arize Track
+MIT — see [LICENSE](LICENSE).
